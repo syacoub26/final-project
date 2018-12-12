@@ -4,6 +4,16 @@
 
 using namespace std;
 
+//global variables
+int pass = 0;
+int TOTAL_CARDS = 54;
+int TOTAL_HAND = 9;
+int INIT_HAND = 7;
+char MIN_PLAYERS ='1';
+char MAX_PLAYERS = '5';
+char MIN_CARDS = '0';
+char MAX_CARDS = '9';
+
 char cardTypes[] = {'N', 'A', 'W'}; 
 /*card types are: N = number cards
 		  A = action cards
@@ -40,6 +50,8 @@ public:
 	char getCardType() { return ct; }
 	virtual void printCard() {}
 
+	//these functions return default values because 
+	//these functions aren't applicable in all derived classes
 	virtual int getNumber() { return -1; }
 	virtual char getColour() { return '0'; }
 	virtual char getAction()  { return '0'; }
@@ -168,14 +180,22 @@ public:
 	}
 	
 	Card* getCard() {
-
 		int r = rand() % it;
 		Card *rc = deckOfCards[r];
 		for(int i = r; i < it - 1; i++){
 			deckOfCards[i] = deckOfCards[i+1];
 		}
-		it = it - 1;
+		it--;
 		return rc;
+	}
+
+	int getIt(){
+		return it;
+	}
+
+	void discard(Card *c) {
+		deckOfCards[it] = c;
+		it++;
 	}
 };
 
@@ -190,9 +210,21 @@ public:
 			hand[i] = d->getCard();
 		}
 	}
-	void drawCard(Deck *d){
-		hand[itp] = d->getCard();
-		itp++;
+	void drawCards(Deck *d, int i){
+		if(itp == 9){
+                        cout << "Hand at full limit. ";
+                        pass = 1;
+                }
+
+		if(d->getIt() == 0){
+			cout << "DECK IS EMPTY! YOU CANNOT DRAW ANY MORE" << endl;
+			pass = 1;
+		}
+		
+		for(int j = 0; j < i && itp < 9 && d->getIt() != 0; j++){
+			hand[itp] = d->getCard();
+			itp++;
+		}
 	}
 	Card* dealCard(int i){
 		Card *ptr = hand[i];
@@ -218,6 +250,7 @@ public:
 	}
 };
 
+//function to determine the next player
 void nextTurn(int *t, int *r, int np){
 	if(*r > 0){
 		if(*t < np-1){
@@ -254,7 +287,10 @@ int main() {
 	while(game && !(c-'0' >= 1 && c-'0' <= 5) ){
 		cout << "Invalid input. Please try again." << endl;
 		cin >> c;
-		if(c == 'E' || c == 'e') { game = 0;}
+		if(c == 'E' || c == 'e') { 
+			game = 0;
+			break;
+		}
 	}
 
 	int numPlayers = c - '0';
@@ -265,37 +301,19 @@ int main() {
 	}
 
 	int turn = 0;
+	char colr;
+	int wild = 0;
+	int rev = 1;
 
-	 Card* dLast = d.getCard();
+	//starting with a top card on discard that isn't an action or a wild card
+	Card* dLast = d.getCard();
+	while(dLast->getCardType() != cardTypes[0]){
+		d.discard(dLast);
+		dLast = d.getCard();
+	}
 
-	 char colr;
-	 int wild = 0;
-	 int rev = 1;
-
-	 if (dLast->getCardType() == cardTypes[2]){
-	 	int col = rand() % 4;
-		colr = colours[col];
-		wild = 1;
-		if(dLast->getAction() == wildCards[1]){
-			for(int i = 0; i < 4; i++){
-				p[turn]->drawCard(&d);
-			}
-		}
-	 }else if (dLast->getCardType() == cardTypes[1]){
-		 if(dLast->getAction() == actions[0]){
-			 rev = -1 * rev;
-			 nextTurn(&turn, &rev, numPlayers);
-		 }else if(dLast->getAction() == actions[1]){
-                         p[turn]->drawCard(&d);
-			 p[turn]->drawCard(&d);
-			 nextTurn(&turn, &rev, numPlayers);
-                 }else if(dLast->getAction() == actions[2]){
-			 nextTurn(&turn, &rev, numPlayers);
-		 }
-	 }
-
-	 while(game){
-	 	for(int i = 0; i < numPlayers; i++){ 
+	while(game){
+		for(int i = 0; i < numPlayers; i++){ 
 			cout << "Player" << (i+1) << ": ";
 			p[i]->print();
 		}
@@ -308,6 +326,8 @@ int main() {
 			cout << "COLOUR CHOSEN: " << colr << endl;
 		}
 
+		pass = 0;
+
 		cin >> c;
 
 		if(c == 'E' || c == 'e') {
@@ -315,10 +335,13 @@ int main() {
 			break;
 		}
 
-		//MAIN LOGIC
+		//GAME LOGIC (determining whether the dealt card is valid)
 		if( c > '0' && c <= '9'){
+
 			if(dLast->getCardType() == cardTypes[0]){ 		//number card
-				if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[0]){
+
+				if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[0]){	//number card on number card
+
 					if(p[turn]->checkCard(c - '1')->getColour() == dLast->getColour() || p[turn]->checkCard(c - '1')->getNumber() == dLast->getNumber() ){
 						delete dLast;
 						dLast = p[turn]->dealCard(c - '1');
@@ -326,141 +349,195 @@ int main() {
 					}else{
 						cout << "Invalid choice! Try again." << endl;
 					}
-				}else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[1]){
+
+				}else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[1]){	//action card on number card
+					
 					if(p[turn]->checkCard(c - '1')->getColour() == dLast->getColour() ){
-                                                delete dLast;
-                                                dLast = p[turn]->dealCard(c - '1');
+						delete dLast;
+						dLast = p[turn]->dealCard(c - '1');
 						if(dLast->getAction() == actions[0]){
 							rev = -1 * rev;
 							nextTurn(&turn, &rev, numPlayers);
 						}else if(dLast->getAction() == actions[1]){
 							nextTurn(&turn, &rev, numPlayers);
-							p[turn]->drawCard(&d);
-							p[turn]->drawCard(&d);
+							p[turn]->drawCards(&d, 2);
 							nextTurn(&turn, &rev, numPlayers);
 						}else if(dLast->getAction() == actions[2]){
 							nextTurn(&turn, &rev, numPlayers);
 							nextTurn(&turn, &rev, numPlayers);
 						}
-                                        }else{
-                                                cout << "Invalid choice! Try again." << endl;
-                                        }
-                                }else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[2]){
+					}else{
+						cout << "Invalid choice! Try again." << endl;
+					}
+					
+				}else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[2]){	//wild card on number card
+					
 					delete dLast;
-                                        dLast = p[turn]->dealCard(c - '1');
+					dLast = p[turn]->dealCard(c - '1');
 					nextTurn(&turn, &rev, numPlayers);
-                			if(p[turn]->dealCard(c - '1')->getAction() == wildCards[1]){
-                        			for(int i = 0; i < 4; i++){
-                                			p[turn]->drawCard(&d);
-                        			}
-                			}
+
 					cout << "Choose a colour: 1.R(Red)  2.Y(Yellow)  3.G(Green)  4.B(Blue)" << endl;
-                                        cin >> c;
-                                        int col = c - '1';
-                                        colr = colours[col];
-                                        wild = 1;
-                                }
+					cin >> c;
+					if(c == 'E' || c == 'e') { 
+						game = 0;
+						break;
+					}
+					while(game && !(c-'0' >= 1 && c-'0' <= 4) ){
+						cout << "Invalid input. Please try again." << endl;
+						cin >> c;
+						if(c == 'E' || c == 'e') {
+							game = 0;
+							break;
+						}
+					}
+					colr = colours[c - '1'];
+
+					if(dLast->getAction() == wildCards[1]){
+						p[turn]->drawCards(&d, 4);
+					}
+					
+					wild = 1;
+				}
+
 			}else if(dLast->getCardType() == cardTypes[1]){		//action card
-				if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[0]){
-                                        if(p[turn]->checkCard(c - '1')->getColour() == dLast->getColour()){
-                                                delete dLast;
-                                                dLast = p[turn]->dealCard(c - '1');
-                                                nextTurn(&turn, &rev, numPlayers);
-                                        }else{
-                                                cout << "Invalid choice! Try again." << endl;
-                                        }
-                                }else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[1]){
-                                        if(p[turn]->checkCard(c - '1')->getColour() == dLast->getColour() || p[turn]->checkCard(c - '1')->getAction() == dLast->getAction()){
-                                                delete dLast;
-                                                dLast = p[turn]->dealCard(c - '1');
-                                                if(dLast->getAction() == actions[0]){
-                                                        rev = -1 * rev;
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                }else if(dLast->getAction() == actions[1]){
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                        p[turn]->drawCard(&d);
-                                                        p[turn]->drawCard(&d);
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                }else if(dLast->getAction() == actions[2]){
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                }
-                                        }else{
-                                                cout << "Invalid choice! Try again." << endl;
-                                        }
-                                }else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[2]){
-                                        delete dLast;
-                                        dLast = p[turn]->dealCard(c - '1');
-                                        nextTurn(&turn, &rev, numPlayers);
-                                        if(p[turn]->dealCard(c - '1')->getAction() == wildCards[1]){
-                                                for(int i = 0; i < 4; i++){
-                                                        p[turn]->drawCard(&d);
-                                                }
-                                        }
-                                        cout << "Choose a colour: 1.R(Red)  2.Y(Yellow)  3.G(Green)  4.B(Blue)" << endl;
-                                        cin >> c;
-                                        int col = c - '1';
-                                        colr = colours[col];
-                                        wild = 1;
-                                }
+
+				if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[0]){	//number card on action card
+
+					if(p[turn]->checkCard(c - '1')->getColour() == dLast->getColour()){
+						delete dLast;
+						dLast = p[turn]->dealCard(c - '1');
+						nextTurn(&turn, &rev, numPlayers);
+					}else{
+						cout << "Invalid choice! Try again." << endl;
+					}
+
+				}else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[1]){	//action card on action card
+
+					if(p[turn]->checkCard(c - '1')->getColour() == dLast->getColour() || p[turn]->checkCard(c - '1')->getAction() == dLast->getAction()){
+						delete dLast;
+						dLast = p[turn]->dealCard(c - '1');
+						if(dLast->getAction() == actions[0]){
+							rev = -1 * rev;
+							nextTurn(&turn, &rev, numPlayers);
+						}else if(dLast->getAction() == actions[1]){
+							nextTurn(&turn, &rev, numPlayers);
+							p[turn]->drawCards(&d, 2);
+							nextTurn(&turn, &rev, numPlayers);
+						}else if(dLast->getAction() == actions[2]){
+							nextTurn(&turn, &rev, numPlayers);
+							nextTurn(&turn, &rev, numPlayers);
+						}
+					}else{
+						cout << "Invalid choice! Try again." << endl;
+					}
+
+				}else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[2]){ //wild card on action card
+
+					delete dLast;
+					dLast = p[turn]->dealCard(c - '1');
+					nextTurn(&turn, &rev, numPlayers);
+
+					cout << "Choose a colour: 1.R(Red)  2.Y(Yellow)  3.G(Green)  4.B(Blue)" << endl;
+					cin >> c;
+					if(c == 'E' || c == 'e') {
+						game = 0;
+						break;
+					}
+					while(game && !(c-'0' >= 1 && c-'0' <= 4) ){
+						cout << "Invalid input. Please try again." << endl;
+						cin >> c;
+						if(c == 'E' || c == 'e') {
+							game = 0;
+							break;
+						}
+					}
+					colr = colours[c - '1'];
+
+					if(dLast->getAction() == wildCards[1]){
+						p[turn]->drawCards(&d, 4);
+					}
+
+					wild = 1;
+				}
+
 			}else if(dLast->getCardType() == cardTypes[2]){		//wild card
-				if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[0]){
-                                        if(p[turn]->checkCard(c - '1')->getColour() == colr){
+
+				if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[0]){ //number card on wild card
+
+					if(p[turn]->checkCard(c - '1')->getColour() == colr){
 						wild = 0;
-                                                delete dLast;
-                                                dLast = p[turn]->dealCard(c - '1');
-                                                nextTurn(&turn, &rev, numPlayers);
-                                        }else{
-                                                cout << "Invalid choice! Try again." << endl;
-                                        }
-                                }else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[1]){
-                                        if(p[turn]->checkCard(c - '1')->getColour() == colr ){
+						delete dLast;
+						dLast = p[turn]->dealCard(c - '1');
+						nextTurn(&turn, &rev, numPlayers);
+					}else{
+						cout << "Invalid choice! Try again." << endl;
+					}
+
+				}else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[1]){ //action card on wild card
+
+					if(p[turn]->checkCard(c - '1')->getColour() == colr ){
 						wild = 0;
-                                                delete dLast;
-                                                dLast = p[turn]->dealCard(c - '1');
-                                                if(dLast->getAction() == actions[0]){
-                                                        rev = -1 * rev;
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                }else if(dLast->getAction() == actions[1]){
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                        p[turn]->drawCard(&d);
-                                                        p[turn]->drawCard(&d);
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                }else if(dLast->getAction() == actions[2]){
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                        nextTurn(&turn, &rev, numPlayers);
-                                                }
-                                        }else{
-                                                cout << "Invalid choice! Try again." << endl;
-                                        }
-                                }else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[2]){
-                                        delete dLast;
-                                        dLast = p[turn]->dealCard(c - '1');
-                                        nextTurn(&turn, &rev, numPlayers);
-                                        if(p[turn]->dealCard(c - '1')->getAction() == wildCards[1]){
-                                                for(int i = 0; i < 4; i++){
-                                                        p[turn]->drawCard(&d);
-                                                }
-                                        }
-                                        cout << "Choose a colour: 1.R(Red)  2.Y(Yellow)  3.G(Green)  4.B(Blue)" << endl;
-                                        cin >> c;
-                                        int col = c - '1';
-                                        colr = colours[col];
-                                }
-                	}
+						delete dLast;
+						dLast = p[turn]->dealCard(c - '1');
+						if(dLast->getAction() == actions[0]){
+							rev = -1 * rev;
+							nextTurn(&turn, &rev, numPlayers);
+						}else if(dLast->getAction() == actions[1]){
+							nextTurn(&turn, &rev, numPlayers);
+							p[turn]->drawCards(&d, 2);
+							nextTurn(&turn, &rev, numPlayers);
+						}else if(dLast->getAction() == actions[2]){
+							nextTurn(&turn, &rev, numPlayers);
+							nextTurn(&turn, &rev, numPlayers);
+						}
+					}else{
+						cout << "Invalid choice! Try again." << endl;
+					}
+
+				}else if(p[turn]->checkCard(c - '1')->getCardType() == cardTypes[2]){ //wild card on wild card
+
+					delete dLast;
+					dLast = p[turn]->dealCard(c - '1');
+					nextTurn(&turn, &rev, numPlayers);
+
+					cout << "Choose a colour: 1.R(Red)  2.Y(Yellow)  3.G(Green)  4.B(Blue)" << endl;
+					cin >> c;
+					if(c == 'E' || c == 'e') {
+						game = 0;
+						break;
+					}
+					while(game && !(c-'0' >= 1 && c-'0' <= 4) ){
+						cout << "Invalid input. Please try again." << endl;
+						cin >> c;
+						if(c == 'E' || c == 'e') {
+							game = 0;
+							break;
+						}
+					}
+					colr = colours[c - '1'];
+
+
+					if(dLast->getAction() == wildCards[1]){
+						p[turn]->drawCards(&d, 4);
+					}
+				}
+			}
 
 		}
 
-		if(p[turn]->getHand() < 8 && (c == 'D' || c == 'd') ){
-                        p[turn]->drawCard(&d);
-                }else if (p[turn]->getHand() == 8 && (c == 'D' || c == 'd') ){
-                        cout << "Hand at full limit. Player" << (turn+1) << " passes." << endl;
-                        nextTurn(&turn, &rev, numPlayers);
-                }
+		//if player decides to draw
+		if( c == 'D' || c == 'd' ){
+			p[turn]->drawCards(&d, 1);
+			if(pass){
+				cout << "Player" << (turn+1) << " passes." << endl;
+				nextTurn(&turn, &rev, numPlayers);
+			}
+		}
 
+		//when a player plays all cards
 		for(int i = 0; i < numPlayers; i++){
 			if(p[i]->getHand() == 0){
-				cout << "CONGRATULATIONS! PLAYER" << (i+1) << " WINS!" << endl;
+				cout << "\n\nCONGRATULATIONS! PLAYER" << (i+1) << " WINS!" << endl;
 				game = 0;
 				break;
 			}
