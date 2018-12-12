@@ -4,15 +4,7 @@
 
 using namespace std;
 
-//global variables
 int pass = 0;
-int TOTAL_CARDS = 54;
-int TOTAL_HAND = 9;
-int INIT_HAND = 7;
-char MIN_PLAYERS ='1';
-char MAX_PLAYERS = '5';
-char MIN_CARDS = '0';
-char MAX_CARDS = '9';
 
 char cardTypes[] = {'N', 'A', 'W'}; 
 /*card types are: N = number cards
@@ -275,22 +267,23 @@ int main() {
 	cout << "Welcome to UNO!" << endl << endl;
 
 	cout << "The Rules are simple!" << endl;
-	//WRITE THE GAME RULES HERE
+	cout << "There are 3 types of cards: number cards, action cards and wild cards.\nNumber cards and action cards come in four sets of colours: red, blue, green and yellow.\nNumber cards are numbered from 0 to 9.\nThere are 3 types of action cards: reverse <=> (reverses the order of players), draw 2 (+2) (the next play draws 2 cards and skips their turn) and skip (/) (the next player skips their turn)." <<endl;
+	cout << "There are 2 types of wildcards: change colour (%) (the player demands the following player to play a card with the colour of choice) and draw 4 (+4) (the following player draws 4 cards and has to play a card of a colour of choice)." << endl;
+	cout << "The game starts with a random number card on discard and every player with 7 cards.\nEvery player has to play a card that matches the colour, number or action of the card on top of discard. Wildcards can be played at any time." << endl;
+	cout << "Every player is limited to 9 cards in hand at any time. If player has no matching cards to play, they can draw until they reach the limit. Then they pass." << endl;
+	cout << "The first to finish their cards wins!" << endl;
 	cout << "You can enter E to quit game at any point" << endl;
 	cout << "To deal a card, enter the number of its position." << endl;
-        cout << "To draw a card enter 'D' -only pass if you draw to the limit-" << endl << endl;
+        cout << "To draw a card enter D -only pass if you draw to the limit-" << endl << endl;
 
 	cout << "How many players? (There can only be from 1 to 5 players)" << endl;
 	cin >> c;
 	if(c == 'E' || c == 'e') { game = 0;}
 
-	while(game && !(c-'0' >= 1 && c-'0' <= 5) ){
+	while(game == 1 && !(c-'0' >= 1 && c-'0' <= 5) ){
 		cout << "Invalid input. Please try again." << endl;
 		cin >> c;
-		if(c == 'E' || c == 'e') { 
-			game = 0;
-			break;
-		}
+		if(c == 'E' || c == 'e') { game = 0;}
 	}
 
 	int numPlayers = c - '0';
